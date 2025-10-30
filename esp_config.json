@@ -1,0 +1,7 @@
+{
+  "port": "COM6",
+  "files": [
+    "main.py"
+  ],
+  "entry_point": "main.py"
+}
