@@ -1,7 +1,7 @@
 {
   "port": "COM6",
   "files": [
-    "main.py"
+    "main.py", "test.py", "wifi_connector.py", ".env"
   ],
-  "entry_point": "main.py"
+  "entry_point": "test.py"
 }

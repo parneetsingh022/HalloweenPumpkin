@@ -1,24 +1,22 @@
 # type: ignore
-
 import time
 import network
 import urequests
 from machine import Pin, Timer
-import urandom as random  # use MicroPython's urandom
 
 
-# --- Configuration ---
-WIFI_SSID = "ATT4NET_TMP"
-WIFI_PASS = "12345678@1"
-# Use your PC's IP
-BASE_IP = "http://192.168.5.212:5000" 
+
+BASE_IP = "http://192.168.5.187:5000" 
 API_MOTION_ENDPOINT = BASE_IP + "/api/motion_event"
 API_LOG_ENDPOINT = BASE_IP + "/api/log_error"  # NEW: Error logging endpoint
 
 MOTION_PIN = 21     # D21 -> GPIO 21
 LED_PIN = 5         # D5  -> GPIO 5
-LED_FLASH_TIME_MS = 21 * 1000  # Flash LED for 8 seconds
-TOTAL_COOLDOWN_MS = 23 * 1000 # Total cooldown is 10 seconds
+LED_FLASH_TIME_MS = 8000  # Flash LED for 8 seconds
+TOTAL_COOLDOWN_MS = 10000 # Total cooldown is 10 seconds
+
+
+
 
 # --- State Definitions ---
 STATE_INIT = 0
@@ -48,71 +46,27 @@ def blink_led(count=3, speed_ms=100):
 
 def connect_wifi():
     global wlan
-    # 0) Make sure AP mode is off (conflicts on some setups)
-    try:
-        ap = network.WLAN(network.AP_IF)
-        ap.active(False)
-    except Exception:
-        pass
-
-    # 1) Up to 3 full recovery cycles
-    for cycle in range(1, 4):
-        try:
-            if not wlan.active():
-                wlan.active(True)
-                # Optional: set hostname (supported on newer firmwares)
-                try:
-                    wlan.config(dhcp_hostname="esp32-motion")
-                except Exception:
-                    pass
-
-            # If already connected, done
-            if wlan.isconnected():
-                print("Wi-Fi already connected:", wlan.ifconfig()[0])
-                return True
-
-            print("Connecting to Wi-Fi...")
-            # Ensure a clean start
-            try:
-                wlan.disconnect()
-            except Exception:
-                pass
-
-            wlan.connect(WIFI_SSID, WIFI_PASS)
-
-            # Wait up to ~10s, printing progress
-            for _ in range(20):
-                if wlan.isconnected():
-                    print("\nWi-Fi Connected:", wlan.ifconfig()[0])
-                    return True
-                time.sleep_ms(500)
-                print(".", end="")
-
-        except OSError as e:
-            # This catches "Wifi Internal Error" and friends
-            print("\nOSError during connect:", e)
-
-        # 2) Recover interface before next attempt
-        print("\nRecovering Wi-Fi interface (attempt %d)..." % cycle)
-        try:
-            wlan.disconnect()
-        except Exception:
-            pass
-        try:
-            wlan.active(False)
-        except Exception:
-            pass
-        time.sleep_ms(500)
-        # Some firmware builds have deinit(); call if present
-        if hasattr(wlan, "deinit"):
-            try:
-                wlan.deinit()
-            except Exception:
-                pass
-        time.sleep_ms(300)
-
-    print("Wi-Fi connection failed after retries.")
-    return False
+    wlan.active(True)
+    if wlan.isconnected():
+        print("Wi-Fi already connected.")
+        return True
+        
+    print('Connecting to Wi-Fi...')
+    wlan.connect(WIFI_SSID, WIFI_PASS)
+    
+    timeout = 15
+    while not wlan.isconnected() and timeout > 0:
+        time.sleep(1)
+        timeout -= 1
+        print('.', end='')
+        
+    if wlan.isconnected():
+        print('\nWi-Fi Connected:', wlan.ifconfig()[0])
+        return True
+    else:
+        print('\nWi-Fi connection failed!')
+        wlan.active(False)
+        return False
 
 # --- NEW: Error Logging Function ---
 def log_error_to_web(error_message):
