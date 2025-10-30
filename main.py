@@ -39,12 +39,14 @@ led_flash_timer = Timer(2)
 # --- Helper Functions ---
 
 def blink_led(count=3, speed_ms=100):
-    led.value(0)
+    """Spooky flicker for visual feedback."""
     for _ in range(count):
-        led.value(1)
-        time.sleep_ms(speed_ms)
-        led.value(0)
-        time.sleep_ms(speed_ms)
+        for _ in range(random.randint(2, 6)):   # small random inner flickers
+            led.value(1)
+            time.sleep_ms(random.randint(30, 200))
+            led.value(0)
+            time.sleep_ms(random.randint(20, 150))
+        time.sleep_ms(random.randint(speed_ms, speed_ms * 2))
 
 def connect_wifi():
     global wlan
@@ -180,12 +182,21 @@ def call_api_post():
 # --- Timer Callback Functions ---
 
 def toggle_led_callback(t):
-    led.value(not led.value()) 
+    # OLD version was: led.value(not led.value())
+    
+    # NEW "Spooky" version:
+    # Give it a 30% chance of being ON and 70% chance of being OFF.
+    # This creates an unstable, flickering effect.
+    if random.randint(1, 10) > 7:
+        led.value(1)  # 8, 9, 10 (30% chance)
+    else:
+        led.value(0)  # 1, 2, 3, 4, 5, 6, 7 (70% chance)
 
 def stop_flashing_callback(t):
-    print("8s timer finished. Stopping LED flash.")
+    # Note: Your variable is 21*1000, so this is a 21s timer :)
+    print("21s timer finished. Stopping LED flash.")
     led_flash_timer.deinit() 
-    led.value(0)             
+    led.value(0)      
 
 def set_state_idle_callback(t):
     global current_state
@@ -226,7 +237,7 @@ def state_machine_logic():
             print("Motion Detected! -> STATE_ACTIVE")
             
             call_api_post()
-            led_flash_timer.init(period=200, mode=Timer.PERIODIC, callback=toggle_led_callback)
+            led_flash_timer.init(period=100, mode=Timer.PERIODIC, callback=toggle_led_callback)
             led_stop_timer.init(period=LED_FLASH_TIME_MS, mode=Timer.ONE_SHOT, callback=stop_flashing_callback)
             cooldown_timer.init(period=TOTAL_COOLDOWN_MS, mode=Timer.ONE_SHOT, callback=set_state_idle_callback)
             current_state = STATE_ACTIVE
